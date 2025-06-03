@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request
 import requests
 from bs4 import BeautifulSoup
-from mangum import Mangum
 
 app = Flask(__name__)
 
@@ -10,7 +9,6 @@ HEADERS = {'User-Agent': 'Mozilla/5.0'}
 def get_filmes(search_term=None, page=1):
     filmes = []
 
-    # URL base
     if search_term:
         url = f"https://megafilmeshdz.cyou/?s={search_term.replace(' ', '+')}&page={page}"
     else:
@@ -31,7 +29,6 @@ def get_filmes(search_term=None, page=1):
                 titulo = titulo_tag.get_text(strip=True)
                 capa = capa_tag["src"]
 
-                # Obter link de vídeo
                 try:
                     filme_page = requests.get(filme_url, headers=HEADERS, timeout=10)
                     filme_soup = BeautifulSoup(filme_page.text, 'html.parser')
@@ -71,11 +68,8 @@ def index():
 def favoritos():
     return render_template('favoritos.html')
 
-handler = Mangum(app)
-
 if __name__ == "__main__":
     app.run(debug=True)
-
 
 
 
