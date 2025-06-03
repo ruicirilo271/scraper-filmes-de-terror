@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Filmes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: #eee;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        form {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 250px;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #e50914;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #b00710;
+        }
+        .btn-favpage {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #444;
+            font-size: 14px;
+            padding: 8px 12px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill,minmax(160px,1fr));
+            gap: 15px;
+        }
+        .filme {
+            background: #222;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 10px #000;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.2s;
+        }
+        .filme:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #e50914;
+        }
+        .filme img {
+            width: 100%;
+            display: block;
+        }
+        .filme-info {
+            padding: 8px;
+            font-size: 14px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .tmdb-link {
+            display: block;
+            text-align: center;
+            margin-top: 6px;
+            font-size: 13px;
+            color: #bbb;
+            text-decoration: none;
+        }
+        .tmdb-link:hover {
+            text-decoration: underline;
+            color: #e50914;
+        }
+
+        /* Estrela Favoritos */
+        .fav-star {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 24px;
+            color: #bbb;
+            text-shadow: 0 0 5px black;
+            user-select: none;
+            cursor: pointer;
+            transition: color 0.3s;
+            z-index: 10;
+        }
+        .fav-star.favorited {
+            color: #e50914;
+            text-shadow: 0 0 8px #e50914;
+        }
+
+        /* Popup video styles */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .popup-content {
+            position: relative;
+            width: 80%;
+            max-width: 900px;
+            background: #000;
+            border-radius: 8px;
+            box-shadow: 0 0 30px #e50914;
+        }
+        .popup-content iframe {
+            width: 100%;
+            height: 480px;
+            border: none;
+            border-radius: 8px;
+        }
+        .popup-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 28px;
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Filmes</h1>
+    <a href="/favoritos" class="btn-favpage">Favoritos ⭐</a>
+</header>
+
+<form method="get" action="/">
+    <input type="text" name="search" placeholder="Buscar filmes..." value="{{ search or '' }}" />
+    <button type="submit">Buscar</button>
+</form>
+
+<div class="grid">
+    {% for filme in filmes %}
+    <div class="filme" data-video-url="{{ filme.url }}" data-titulo="{{ filme.titulo }}" data-capa="{{ filme.capa }}" data-tmdb="{{ filme.tmdb_link }}">
+        <span class="fav-star" title="Favoritar">&#9734;</span>
+        <img src="{{ filme.capa }}" alt="Capa do filme {{ filme.titulo }}" />
+        <div class="filme-info">{{ filme.titulo }}</div>
+        <a href="{{ filme.tmdb_link }}" target="_blank" class="tmdb-link" rel="noopener">Ver sinopse no TMDB</a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Popup video -->
+<div id="popup" class="popup-overlay">
+    <div class="popup-content">
+        <span class="popup-close" id="popup-close">&times;</span>
+        <iframe id="popup-video" src="" allowfullscreen allow="autoplay"></iframe>
+    </div>
+</div>
+
+<script>
+    // Popup para vídeo
+    const filmes = document.querySelectorAll('.filme');
+    const popup = document.getElementById('popup');
+    const popupVideo = document.getElementById('popup-video');
+    const popupClose = document.getElementById('popup-close');
+
+    filmes.forEach(filme => {
+        // Clique na capa abre vídeo
+        filme.querySelector('img').addEventListener('click', e => {
+            e.stopPropagation();
+            const videoUrl = filme.getAttribute('data-video-url');
+            if (videoUrl) {
+                popupVideo.src = videoUrl;
+                popup.style.display = 'flex';
+            } else {
+                alert('Vídeo indisponível para este filme.');
+            }
+        });
+
+        // Clique na estrela favoritar
+        const star = filme.querySelector('.fav-star');
+        const titulo = filme.getAttribute('data-titulo');
+
+        // Verifica se já está favoritado no localStorage
+        let favoritos = JSON.parse(localStorage.getItem('favoritos') || '[]');
+        if (favoritos.some(f => f.titulo === titulo)) {
+            star.classList.add('favorited');
+            star.innerHTML = '&#9733;'; // estrela cheia
+        }
+
+        star.addEventListener('click', e => {
+            e.stopPropagation();
+            let favoritos = JSON.parse(localStorage.getItem('favoritos') || '[]');
+            const capa = filme.getAttribute('data-capa');
+            const video = filme.getAttribute('data-video-url');
+            const tmdb = filme.getAttribute('data-tmdb');
+
+            if (star.classList.contains('favorited')) {
+                // remover favorito
+                favoritos = favoritos.filter(f => f.titulo !== titulo);
+                star.classList.remove('favorited');
+                star.innerHTML = '&#9734;';
+            } else {
+                // adicionar favorito
+                favoritos.push({ titulo: titulo, capa: capa, url: video, tmdb_link: tmdb });
+                star.classList.add('favorited');
+                star.innerHTML = '&#9733;';
+            }
+            localStorage.setItem('favoritos', JSON.stringify(favoritos));
+        });
+    });
+
+    popupClose.addEventListener('click', () => {
+        popupVideo.src = '';
+        popup.style.display = 'none';
+    });
+
+    popup.addEventListener('click', e => {
+        if (e.target === popup) {
+            popupVideo.src = '';
+            popup.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
